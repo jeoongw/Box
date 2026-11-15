@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>오늘의 루틴</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="오늘의 루틴">
 <meta name="theme-color" content="#eef1f5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141b33" media="(prefers-color-scheme: dark)">
 <style>
@@ -20,7 +24,7 @@
 :root{
   --bg:#eef1f5; --surface:#ffffff; --sunk:#e3e8ef;
   --ink:#1e2d5a; --muted:#5b6780; --line:#d5dbe5;
-  --done:#b87500; --on-done:#ffffff;
+  --done:#b87500; --on-done:#ffffff; --done-text:#9c6200;
   --accent:#1e2d5a; --on-accent:#ffffff;
   --lake:#2f6970;
   --shadow:0 10px 30px rgba(30,45,90,.10);
@@ -30,7 +34,7 @@
 @media (prefers-color-scheme:dark){:root{
   --bg:#141b33; --surface:#1d2544; --sunk:#252f55;
   --ink:#e6eaf2; --muted:#a3adc2; --line:#2e3964;
-  --done:#f5b335; --on-done:#141b33;
+  --done:#f5b335; --on-done:#141b33; --done-text:#f5b335;
   --accent:#e6eaf2; --on-accent:#141b33;
   --lake:#7fc0c6;
   --shadow:0 10px 30px rgba(0,0,0,.35);
@@ -38,7 +42,7 @@
 }}
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--lake);outline-offset:3px;border-radius:6px}
@@ -84,7 +88,7 @@ button{cursor:pointer}
 .open time{flex:none;width:48px;font-variant-numeric:tabular-nums;font-weight:500;color:var(--muted);font-size:.9375rem}
 .open .t{display:block;font-size:1rem;overflow-wrap:anywhere}
 .open .m{display:block;font-size:.8125rem;color:var(--muted)}
-.tag{display:inline-block;font-size:.75rem;font-weight:500;color:var(--done);margin-left:6px}
+.tag{display:inline-block;font-size:.75rem;font-weight:500;color:var(--done-text);margin-left:6px}
 .item.done .t{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
 .check{flex:none;width:44px;height:44px;margin:0 12px 0 4px;border-radius:50%;border:2px solid var(--ink);background:transparent;display:grid;place-items:center;padding:0;transition:background .15s,border-color .15s}
 .check svg{opacity:0;transition:opacity .15s}
@@ -144,7 +148,7 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
 
 /* toast */
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:var(--ink);color:var(--bg);padding:6px 8px 6px 18px;border-radius:999px;font-size:.9375rem;opacity:0;pointer-events:none;transition:opacity .2s;width:max-content;max-width:calc(100% - 32px);min-height:44px}
-.toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.toast span{min-width:0;padding:6px 0}
 .toast button{white-space:nowrap;flex:none}
 .toast.show{opacity:1;pointer-events:auto}
 .toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;min-height:36px;padding:0 10px}
@@ -152,7 +156,24 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
 .toast:not(:has(button:not([hidden]))){padding-right:18px}
 
 .foot{margin-top:28px;font-size:.875rem;color:var(--muted)}
-.foot p{margin:0 0 4px}
+.foot p{margin:0 0 4px;max-width:46ch}
+.links{display:flex;flex-wrap:wrap;gap:0 18px;margin-top:6px}
+.item.skipped .t{color:var(--muted)}
+.item.skipped .check{border-style:dashed;border-color:var(--muted)}
+.tag.skip{color:var(--muted)}
+.sheet .link.block{display:block;margin:-4px 0 8px}
+.sheet .link.block[hidden]{display:none}
+.all{list-style:none;margin:0 0 12px;padding:0;max-height:60vh;overflow:auto}
+.all li{border-bottom:1px solid var(--line)}
+.all li:last-child{border-bottom:0}
+.all .open{padding-left:0}
+.set{border-top:1px solid var(--line);padding:14px 0}
+.set:first-of-type{border-top:0;padding-top:0}
+.set h3{font-size:1rem;font-weight:500;margin:0 0 4px}
+.set p{margin:0 0 10px;font-size:.875rem;color:var(--muted)}
+.set select{height:48px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 12px;font:inherit;color:var(--ink);min-width:160px}
+.set .btn{flex:none;height:44px;font-size:.9375rem;padding:0 18px}
+.set .row{display:flex;gap:8px;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -176,8 +197,12 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
   <div id="groups"></div>
 
   <footer class="foot">
-    <p>알람은 이 페이지가 열려 있을 때 울려요. 휴대폰은 홈 화면에 추가해 두면 편해요.</p>
-    <button class="link" id="testBtn">알람 소리 들어보기</button>
+    <div class="links">
+      <button class="link" id="allBtn">전체 루틴 보기</button>
+      <button class="link" id="setBtn">설정</button>
+      <button class="link" id="testBtn">알람 소리 들어보기</button>
+    </div>
+    <p>알람은 이 페이지가 열려 있을 때 울려요. 앱을 닫아도 알림을 받으려면 설정에서 캘린더로 내보내세요.</p>
   </footer>
 </main>
 
@@ -200,12 +225,45 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
       <div class="days" id="days" hidden></div>
     </div>
     <label class="switch"><span>이 시간에 알람 울리기</span><input type="checkbox" id="fAlarm" role="switch" checked></label>
+    <button type="button" class="link block" id="skipBtn" hidden>오늘만 건너뛰기</button>
     <div class="actions">
       <button type="button" class="btn danger" id="delBtn" hidden>삭제</button>
       <button type="button" class="btn quiet" id="cancelBtn">닫기</button>
       <button type="submit" class="btn" id="saveBtn">저장</button>
     </div>
   </form>
+</dialog>
+
+<dialog class="sheet" id="allSheet" aria-labelledby="allTitle">
+  <div class="grip" aria-hidden="true"></div>
+  <h2 id="allTitle">전체 루틴</h2>
+  <ul class="all" id="allList"></ul>
+  <div class="actions"><button type="button" class="btn quiet" data-close>닫기</button><button type="button" class="btn" id="allAdd">루틴 추가</button></div>
+</dialog>
+
+<dialog class="sheet" id="setSheet" aria-labelledby="setTitle">
+  <div class="grip" aria-hidden="true"></div>
+  <h2 id="setTitle">설정</h2>
+  <section class="set">
+    <h3><label for="dayStart">하루 시작 시각</label></h3>
+    <p>이 시각 전에 하는 루틴은 전날 루틴으로 기록돼요. 밤늦게 자는 분은 새벽으로 두세요.</p>
+    <select id="dayStart"></select>
+  </section>
+  <section class="set">
+    <h3>캘린더로 내보내기</h3>
+    <p>루틴을 반복 일정으로 휴대폰 캘린더에 추가해요. 앱을 닫아도 캘린더 알림이 울려요. 앱에서 완료해도 캘린더 알림은 그대로 울려요.</p>
+    <button type="button" class="btn" id="icsBtn">캘린더 파일 저장</button>
+  </section>
+  <section class="set">
+    <h3>백업</h3>
+    <p>기록은 이 기기의 브라우저에만 저장돼요. 휴대폰을 바꾸기 전에 백업 파일을 저장하세요.</p>
+    <div class="row">
+      <button type="button" class="btn quiet" id="backupBtn">백업 파일 저장</button>
+      <button type="button" class="btn quiet" id="restoreBtn">백업 불러오기</button>
+      <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+    </div>
+  </section>
+  <div class="actions"><button type="button" class="btn quiet" data-close style="flex:1">닫기</button></div>
 </dialog>
 
 <dialog class="alarm" id="alarm" aria-labelledby="alarmTitle">
@@ -225,13 +283,14 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
 <script>
 const $ = s => document.querySelector(s);
 const DAY = ['일','월','화','수','목','금','토'];
+const ICS_DAY = ['SU','MO','TU','WE','TH','FR','SA'];
 const KEY = 'orbit-routine-v1';
 const pad = n => String(n).padStart(2,'0');
 const dkey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
-const nowMin = () => { const d=new Date(); return d.getHours()*60+d.getMinutes(); };
 const ALL=[0,1,2,3,4,5,6], WEEK=[1,2,3,4,5], END=[0,6];
 const same = (a,b) => a.length===b.length && a.every((v,i)=>v===b[i]);
+const esc = s => s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CHECK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
 const seed = () => ({
@@ -241,62 +300,73 @@ const seed = () => ({
     ['15:00','일어나서 물 마시기',WEEK],['18:20','내일 일정 확인하고 퇴근',WEEK],
     ['21:30','운동 또는 독서 20분',ALL],['23:30','휴대폰 내려놓기',ALL]
   ].map(([time,title,days],i)=>({id:'r'+i+Date.now(),time,title,days:[...days],alarm:true})),
-  log:{}, fired:{}, snooze:[]
+  log:{}, fired:{}, snooze:[], skip:{}, dayStart:240
 });
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch { S = seed(); }
-S.log ||= {}; S.fired ||= {}; S.snooze ||= [];
+const normalize = () => { S.log ||= {}; S.fired ||= {}; S.snooze ||= []; S.skip ||= {}; if(typeof S.dayStart!=='number') S.dayStart=240; };
+normalize();
 const save = () => localStorage.setItem(KEY, JSON.stringify(S));
 
-const todays = (d=new Date()) => S.routines.filter(r=>r.days.includes(d.getDay())).sort((a,b)=>toMin(a.time)-toMin(b.time));
-const doneSet = () => new Set(S.log[dkey(new Date())]||[]);
+/* ---------- logical day: the day starts at S.dayStart (e.g. 04:00) ---------- */
+const logicalDate = () => new Date(Date.now() - S.dayStart*60000);
+const today = () => dkey(logicalDate());
+const adj = m => m < S.dayStart ? m + 1440 : m;              // minutes on the logical day's axis
+const nowAdj = () => { const d=new Date(); return adj(d.getHours()*60+d.getMinutes()); };
+const at = r => adj(toMin(r.time));
+
+const todays = () => { const wd=logicalDate().getDay(); return S.routines.filter(r=>r.days.includes(wd)).sort((a,b)=>at(a)-at(b)); };
+const doneSet = () => new Set(S.log[today()]||[]);
+const skipSet = () => new Set(S.skip[today()]||[]);
 const isDone = id => doneSet().has(id);
+function toggleIn(store,id,on){ const k=today(), s=new Set(store[k]||[]); on?s.add(id):s.delete(id); store[k]=[...s]; }
 function setDone(id,on){
-  const k=dkey(new Date()), s=new Set(S.log[k]||[]);
-  on?s.add(id):s.delete(id); S.log[k]=[...s];
-  if(on) S.snooze=S.snooze.filter(x=>x.id!==id);
+  toggleIn(S.log,id,on);
+  if(on){ toggleIn(S.skip,id,false); S.snooze=S.snooze.filter(x=>x.id!==id); }
   save(); render();
 }
+function setSkip(id,on){ toggleIn(S.skip,id,on); if(on){ toggleIn(S.log,id,false); S.snooze=S.snooze.filter(x=>x.id!==id); } save(); render(); }
 const daysLabel = d => same(d,ALL)?'매일':same(d,WEEK)?'평일':same(d,END)?'주말':d.map(i=>DAY[i]).join(' ');
-const until = m => { const diff=m-nowMin(); if(diff<=0) return '지금'; const h=Math.floor(diff/60), mm=diff%60; return (h?`${h}시간 `:'')+(mm?`${mm}분 `:'')+'뒤'; };
+const until = m => { const diff=m-nowAdj(); if(diff<=0) return '지금'; const h=Math.floor(diff/60), mm=diff%60; return (h?`${h}시간 `:'')+(mm?`${mm}분 `:'')+'뒤'; };
 
 /* ---------- render ---------- */
 function render(){
-  const d=new Date(), list=todays(d), done=doneSet(), nm=nowMin();
-  const n=list.filter(r=>done.has(r.id)).length, pct=list.length?Math.round(n/list.length*100):0;
+  const d=logicalDate(), list=todays(), done=doneSet(), skip=skipSet(), nm=nowAdj();
+  const active=list.filter(r=>!skip.has(r.id));
+  const n=active.filter(r=>done.has(r.id)).length, pct=active.length?Math.round(n/active.length*100):0;
   $('#date').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${DAY[d.getDay()]}요일`;
-  $('#count').innerHTML=list.length?`<b>${n}</b> / ${list.length} 완료`:'';
+  $('#count').innerHTML=active.length?`<b>${n}</b> / ${active.length} 완료`:'';
   $('#bar').firstElementChild.style.width=pct+'%'; $('#bar').setAttribute('aria-valuenow',pct);
+  if('setAppBadge' in navigator){ const left=active.length-n; (left?navigator.setAppBadge(left):navigator.clearAppBadge()).catch(()=>{}); }
 
-  // now card: first unfinished routine in order (overdue first)
-  const next=list.find(r=>!done.has(r.id));
+  const next=active.find(r=>!done.has(r.id));
   const now=$('#now');
   if(!list.length){ now.className='now all'; now.innerHTML='<p class="now-label">오늘</p><h2>오늘은 루틴이 없어요</h2>'; }
   else if(!next){ now.className='now all'; now.innerHTML='<p class="now-label">오늘</p><h2>오늘 루틴을 모두 마쳤어요</h2>'; }
   else{
-    const late=toMin(next.time)<nm;
+    const late=at(next)<nm;
     now.className='now';
-    now.innerHTML=`<p class="now-label">${late?'지난 할 일':'다음 할 일, '+until(toMin(next.time))}</p>
+    now.innerHTML=`<p class="now-label">${late?'지난 할 일':'다음 할 일, '+until(at(next))}</p>
       <div class="now-main"><div class="now-text"><time>${next.time}</time><h2></h2></div>
       <button class="now-done" aria-label="${esc(next.title)} 완료">${CHECK.replace('width="20" height="20"','width="30" height="30"')}</button></div>`;
     now.querySelector('h2').textContent=next.title;
     now.querySelector('.now-done').onclick=()=>{ setDone(next.id,true); toast(`'${next.title}' 완료`,()=>setDone(next.id,false)); };
   }
 
-  // groups
-  const G=[['출근 전',0,540],['업무 중',540,1080],['퇴근 후',1080,1440]];
+  const G=[['출근 전',S.dayStart,540],['업무 중',540,1080],['퇴근 후',1080,1440+S.dayStart]];
   const box=$('#groups'); box.innerHTML='';
-  if(!list.length){ box.innerHTML='<div class="empty"><img src="art/orbital-stillness.png" alt="">루틴 추가를 눌러 오늘의 첫 루틴을 만드세요.</div>'; return; }
+  if(!list.length){ box.innerHTML='<div class="empty"><img src="art/orbital-stillness.png" alt="">루틴 추가를 눌러 오늘의 첫 루틴을 만드세요.</div>'; drawBanner(); return; }
   for(const [name,a,b] of G){
-    const items=list.filter(r=>{const m=toMin(r.time);return m>=a&&m<b;});
+    const items=list.filter(r=>{const m=at(r);return m>=a&&m<b;});
     if(!items.length) continue;
     const sec=document.createElement('section'); sec.className='group';
     sec.innerHTML=`<h3>${name}</h3><ul class="list"></ul>`;
     const ul=sec.querySelector('ul');
     items.forEach(r=>{
-      const dn=done.has(r.id), late=!dn&&toMin(r.time)<nm&&r!==next;
-      const li=document.createElement('li'); li.className='item'+(dn?' done':'');
-      li.innerHTML=`<button class="open" aria-label="${esc(r.title)} 수정"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}${late?'<span class="tag">지남</span>':''}</span></span></button>
+      const dn=done.has(r.id), sk=skip.has(r.id), late=!dn&&!sk&&at(r)<nm&&r!==next;
+      const li=document.createElement('li'); li.className='item'+(dn?' done':'')+(sk?' skipped':'');
+      const tag = sk?'<span class="tag skip">오늘 건너뜀</span>':late?'<span class="tag">지남</span>':'';
+      li.innerHTML=`<button class="open" aria-label="${esc(r.title)} 수정"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}${tag}</span></span></button>
         <button class="check" aria-pressed="${dn}" aria-label="${esc(r.title)} 완료">${CHECK}</button>`;
       li.querySelector('.t').textContent=r.title;
       li.querySelector('.open').onclick=()=>openSheet(r);
@@ -307,9 +377,8 @@ function render(){
   }
   drawBanner();
 }
-const esc = s => s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* ---------- sheet ---------- */
+/* ---------- add / edit sheet ---------- */
 let editing=null, fDays=new Set(ALL);
 const dayBox=$('#days');
 [1,2,3,4,5,6,0].forEach(i=>{ const b=document.createElement('button'); b.type='button'; b.textContent=DAY[i]; b.dataset.d=i;
@@ -333,33 +402,101 @@ function openSheet(r){
   $('#fAlarm').checked=r?r.alarm:true;
   fDays=new Set(r?r.days:ALL); syncDays();
   $('#delBtn').hidden=!r;
+  const onToday = r && todays().includes(r) && !isDone(r.id);
+  $('#skipBtn').hidden=!onToday;
+  if(onToday) $('#skipBtn').textContent = skipSet().has(r.id) ? '건너뛰기 취소' : '오늘만 건너뛰기';
   $('#sheet').showModal(); if(!r) $('#fTitle').focus();
 }
 $('#addBtn').onclick=()=>openSheet();
 $('#cancelBtn').onclick=()=>$('#sheet').close();
-$('#sheet').addEventListener('click',e=>{ if(e.target===e.currentTarget) e.currentTarget.close(); });
+document.querySelectorAll('dialog.sheet').forEach(d=>{
+  d.addEventListener('click',e=>{ if(e.target===d) d.close(); });
+  d.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>d.close());
+});
 $('#form').onsubmit=e=>{
   e.preventDefault();
   const title=$('#fTitle').value.trim();
   if(!title){ $('#fTitle').focus(); return; }
   if(!fDays.size){ toast('반복할 요일을 하나 이상 고르세요'); return; }
   const data={title,time:$('#fTime').value,days:[...fDays].sort(),alarm:$('#fAlarm').checked};
-  if(editing){ Object.assign(editing,data); if(editing.time) Object.keys(S.fired).forEach(k=>k.endsWith(editing.id)&&delete S.fired[k]); }
+  if(editing){ Object.assign(editing,data); Object.keys(S.fired).forEach(k=>k.endsWith(editing.id)&&delete S.fired[k]); }
   else S.routines.push({id:'r'+Date.now(),...data});
-  save(); $('#sheet').close(); render();
-  const off=!data.days.includes(new Date().getDay());
+  save(); $('#sheet').close(); render(); if($('#allSheet').open) drawAll();
+  const off=!data.days.includes(logicalDate().getDay());
   toast((editing?'저장함':`'${title}' 추가함`)+(off?`. ${daysLabel(data.days)}에만 보여요`:''));
-  if(data.alarm) askLater();
 };
 $('#delBtn').onclick=()=>{
-  const r=editing, idx=S.routines.indexOf(r); S.routines.splice(idx,1); save(); $('#sheet').close(); render();
-  toast(`'${r.title}' 삭제함`,()=>{ S.routines.splice(idx,0,r); save(); render(); });
+  const r=editing, idx=S.routines.indexOf(r); S.routines.splice(idx,1); save(); $('#sheet').close(); render(); if($('#allSheet').open) drawAll();
+  toast(`'${r.title}' 삭제함`,()=>{ S.routines.splice(idx,0,r); save(); render(); if($('#allSheet').open) drawAll(); });
+};
+$('#skipBtn').onclick=()=>{
+  const r=editing, on=!skipSet().has(r.id); setSkip(r.id,on); $('#sheet').close();
+  toast(on?`'${r.title}' 오늘은 건너뛰어요`:'건너뛰기를 취소했어요', on?()=>setSkip(r.id,false):null);
+};
+
+/* ---------- all routines ---------- */
+function drawAll(){
+  const ul=$('#allList'); ul.innerHTML='';
+  const list=[...S.routines].sort((a,b)=>at(a)-at(b));
+  if(!list.length){ ul.innerHTML='<li class="empty">아직 루틴이 없어요.</li>'; return; }
+  list.forEach(r=>{
+    const li=document.createElement('li');
+    li.innerHTML=`<button class="open" aria-label="${esc(r.title)} 수정"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}</span></span></button>`;
+    li.querySelector('.t').textContent=r.title;
+    li.querySelector('.open').onclick=()=>openSheet(r);
+    ul.appendChild(li);
+  });
+}
+$('#allBtn').onclick=()=>{ drawAll(); $('#allSheet').showModal(); };
+$('#allAdd').onclick=()=>openSheet();
+
+/* ---------- settings ---------- */
+const dsSel=$('#dayStart');
+[[0,'자정 (0시)'],[60,'새벽 1시'],[120,'새벽 2시'],[180,'새벽 3시'],[240,'새벽 4시'],[300,'새벽 5시'],[360,'새벽 6시']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; dsSel.appendChild(o); });
+$('#setBtn').onclick=()=>{ dsSel.value=S.dayStart; $('#setSheet').showModal(); };
+dsSel.onchange=()=>{ S.dayStart=+dsSel.value; S.fired={}; save(); render(); toast('하루 시작 시각을 바꿨어요'); };
+
+function download(name,text,type){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+const icsText = s => s.replace(/\\/g,'\\\\').replace(/([,;])/g,'\\$1').replace(/\n/g,'\\n');
+function buildICS(){
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//today-routine//KO','CALSCALE:GREGORIAN','X-WR-CALNAME:오늘의 루틴'];
+  for(const r of S.routines){
+    const first=new Date(); first.setHours(0,0,0,0);
+    while(!r.days.includes(first.getDay())) first.setDate(first.getDate()+1);
+    const [h,m]=r.time.split(':');
+    L.push('BEGIN:VEVENT',`UID:${r.id}@today-routine`,`DTSTAMP:${stamp}`,
+      `DTSTART:${first.getFullYear()}${pad(first.getMonth()+1)}${pad(first.getDate())}T${h}${m}00`,'DURATION:PT10M',
+      `RRULE:FREQ=WEEKLY;BYDAY=${r.days.map(i=>ICS_DAY[i]).join(',')}`,`SUMMARY:${icsText(r.title)}`);
+    if(r.alarm) L.push('BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsText(r.title)}`,'TRIGGER:PT0M','END:VALARM');
+    L.push('END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  return L.join('\r\n')+'\r\n';
+}
+$('#icsBtn').onclick=()=>{
+  if(!S.routines.length){ toast('내보낼 루틴이 없어요'); return; }
+  download('오늘의-루틴.ics',buildICS(),'text/calendar');
+  toast('캘린더 파일을 저장했어요. 파일을 열면 캘린더에 추가돼요');
+};
+$('#backupBtn').onclick=()=>{ download(`루틴-백업-${today()}.json`,JSON.stringify({app:'today-routine',version:1,data:S},null,1),'application/json'); toast('백업 파일을 저장했어요'); };
+$('#restoreBtn').onclick=()=>$('#restoreFile').click();
+$('#restoreFile').onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  try{
+    const j=JSON.parse(await f.text()), data=j.data||j;
+    if(!Array.isArray(data.routines) || !data.routines.every(r=>r.id&&r.title&&/^\d\d:\d\d$/.test(r.time)&&Array.isArray(r.days))) throw 0;
+    const prev=JSON.stringify(S); S=data; normalize(); save(); render(); $('#setSheet').close();
+    toast(`루틴 ${S.routines.length}개를 불러왔어요`,()=>{ S=JSON.parse(prev); save(); render(); });
+  }catch{ toast('백업 파일이 아니에요. 이 앱에서 저장한 .json 파일을 고르세요'); }
 };
 
 /* ---------- notifications banner ---------- */
 const perm = () => ('Notification' in window) ? Notification.permission : 'unsupported';
 function drawBanner(){ $('#banner').hidden = !(perm()==='default' && S.routines.some(r=>r.alarm) && !S.bannerLater); }
-function askLater(){ drawBanner(); }
 $('#allowBtn').onclick=()=>Notification.requestPermission().then(p=>{ drawBanner(); toast(p==='granted'?'알림을 허용했어요':'알림 없이 소리와 화면으로만 알려드려요'); });
 $('#laterBtn').onclick=()=>{ S.bannerLater=true; save(); drawBanner(); };
 
@@ -375,10 +512,10 @@ $('#testBtn').onclick=()=>{ unlock(); chime(); };
 
 function ring(r){
   if(current) return; current=r;
-  if($('#sheet').open) $('#sheet').close();
+  document.querySelectorAll('dialog.sheet[open]').forEach(d=>d.close());
   $('#alarmTime').textContent=r.time; $('#alarmTitle').textContent=r.title;
   $('#alarm').showModal();
-  chime(); let n=0; ringTimer=setInterval(()=>{ if(++n>20) return stopRing(true); chime(); },3000);
+  chime(); let n=0; ringTimer=setInterval(()=>{ if(++n>20) return stopRing(); chime(); },3000);
   if('vibrate' in navigator) navigator.vibrate([300,150,300]);
   if(perm()==='granted'){ try{ const no=new Notification(`${r.time} ${r.title}`,{body:'루틴 시간이에요',tag:r.id,requireInteraction:true}); no.onclick=()=>{focus();no.close();}; }catch{} }
   document.title=`⏰ ${r.title}`;
@@ -388,19 +525,20 @@ $('#aDone').onclick=()=>{ const r=current; stopRing(); if(r){ setDone(r.id,true)
 $('#aSnooze').onclick=()=>{ const r=current; stopRing(); if(r){ S.snooze.push({id:r.id,at:Date.now()+5*60e3}); save(); toast('5분 뒤에 다시 알려드릴게요'); } };
 $('#alarm').addEventListener('cancel',e=>{ e.preventDefault(); $('#aSnooze').click(); });
 
-let lastDay=dkey(new Date());
+let lastDay=today();
 function tick(){
-  const now=new Date(), k=dkey(now), nm=nowMin();
+  const k=today(), nm=nowAdj();
   if(k!==lastDay){ lastDay=k; S.fired={}; save(); }
   if(!current){
+    const skip=skipSet();
     const due=S.snooze.find(s=>s.at<=Date.now());
-    if(due){ S.snooze=S.snooze.filter(s=>s!==due); save(); const r=S.routines.find(x=>x.id===due.id); if(r&&!isDone(r.id)) ring(r); }
-    else for(const r of todays(now)){
-      const m=toMin(r.time);
-      if(r.alarm && !isDone(r.id) && !S.fired[k+r.id] && nm>=m && nm-m<=2){ S.fired[k+r.id]=1; save(); ring(r); break; }
+    if(due){ S.snooze=S.snooze.filter(s=>s!==due); save(); const r=S.routines.find(x=>x.id===due.id); if(r&&!isDone(r.id)&&!skip.has(r.id)) ring(r); }
+    else for(const r of todays()){
+      const m=at(r);
+      if(r.alarm && !isDone(r.id) && !skip.has(r.id) && !S.fired[k+r.id] && nm>=m && nm-m<=2){ S.fired[k+r.id]=1; save(); ring(r); break; }
     }
   }
-  if(!$('#sheet').open) render();
+  if(!document.querySelector('dialog.sheet[open]')) render();
 }
 
 /* ---------- toast with undo ---------- */
@@ -409,7 +547,7 @@ function toast(msg,undo){
   $('#toastMsg').textContent=msg;
   const u=$('#toastUndo'); u.hidden=!undo; u.onclick=()=>{ undo&&undo(); $('#toast').classList.remove('show'); };
   $('#toast').classList.add('show'); clearTimeout(toastT);
-  toastT=setTimeout(()=>$('#toast').classList.remove('show'), undo?5000:2400);
+  toastT=setTimeout(()=>$('#toast').classList.remove('show'), undo?5000:2800);
 }
 
 render(); setInterval(tick,10000); setTimeout(tick,500);
