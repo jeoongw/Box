@@ -161,6 +161,16 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
 .item.skipped .t{color:var(--muted)}
 .item.skipped .check{border-style:dashed;border-color:var(--muted)}
 .tag.skip{color:var(--muted)}
+.tag.settled{color:var(--lake)}
+.week{white-space:nowrap}
+@keyframes pop{0%{transform:scale(.82)}55%{transform:scale(1.14)}100%{transform:scale(1)}}
+.check.pop{animation:pop .32s ease-out}
+.nudge{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin:-12px 0 24px}
+.nudge[hidden]{display:none}
+.nudge p{margin:0 0 10px}
+.nudge .row{display:flex;gap:8px;flex-wrap:wrap}
+.nudge .btn{flex:none;height:44px;font-size:.9375rem;padding:0 18px}
+.set .switch{margin:0}
 .sheet .link.block{display:block;margin:-4px 0 8px}
 .sheet .link.block[hidden]{display:none}
 .all{list-style:none;margin:0 0 12px;padding:0;max-height:60vh;overflow:auto}
@@ -194,6 +204,13 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
   </div>
 
   <section class="now" id="now" aria-live="polite"></section>
+  <div class="nudge" id="nudge" role="status" hidden>
+    <p id="nudgeText"></p>
+    <div class="row">
+      <button class="btn" id="nudgeOff">알람 끄기</button>
+      <button class="btn quiet" id="nudgeKeep">계속 울리기</button>
+    </div>
+  </div>
   <div id="groups"></div>
 
   <footer class="foot">
@@ -250,6 +267,9 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
     <select id="dayStart"></select>
   </section>
   <section class="set">
+    <label class="switch"><span><b style="font-weight:500">체크할 때 소리와 진동</b></span><input type="checkbox" id="fbToggle" role="switch"></label>
+  </section>
+  <section class="set">
     <h3>캘린더로 내보내기</h3>
     <p>루틴을 반복 일정으로 휴대폰 캘린더에 추가해요. 앱을 닫아도 캘린더 알림이 울려요. 앱에서 완료해도 캘린더 알림은 그대로 울려요.</p>
     <button type="button" class="btn" id="icsBtn">캘린더 파일 저장</button>
@@ -304,7 +324,7 @@ const seed = () => ({
 });
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch { S = seed(); }
-const normalize = () => { S.log ||= {}; S.fired ||= {}; S.snooze ||= []; S.skip ||= {}; if(typeof S.dayStart!=='number') S.dayStart=240; };
+const normalize = () => { S.log ||= {}; S.fired ||= {}; S.snooze ||= []; S.skip ||= {}; if(typeof S.dayStart!=='number') S.dayStart=240; if(typeof S.feedback!=='boolean') S.feedback=true; };
 normalize();
 const save = () => localStorage.setItem(KEY, JSON.stringify(S));
 
@@ -326,6 +346,44 @@ function setDone(id,on){
   save(); render();
 }
 function setSkip(id,on){ toggleIn(S.skip,id,on); if(on){ toggleIn(S.log,id,false); S.snooze=S.snooze.filter(x=>x.id!==id); } save(); render(); }
+/* ---------- progress & rewards (docs/rewards.md) ---------- */
+const shift = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const didOn = (r,k) => (S.log[k]||[]).includes(r.id);
+const skippedOn = (r,k) => (S.skip[k]||[]).includes(r.id);
+function firstDone(r){ let f=null; for(const k in S.log) if(S.log[k].includes(r.id) && (!f||k<f)) f=k; return f; }
+// 2. weekly count instead of a streak: Mon-Sun of the logical week, skipped days excluded
+function weekStats(r){
+  const d=logicalDate(), mon=shift(d,-((d.getDay()+6)%7)); let total=0, done=0;
+  for(let i=0;i<7;i++){ const x=shift(mon,i), k=dkey(x); if(!r.days.includes(x.getDay())||skippedOn(r,k)) continue; total++; if(didOn(r,k)) done++; }
+  return {total,done};
+}
+// 1. comeback: done before, but the most recent scheduled (not skipped) day before today was missed
+function isComeback(r){
+  const first=firstDone(r), t=today(); if(!first||first>=t) return false;
+  for(let i=1;i<=60;i++){ const x=shift(logicalDate(),-i), k=dkey(x); if(k<first) return false;
+    if(!r.days.includes(x.getDay())||skippedOn(r,k)) continue; return !didOn(r,k); }
+  return false;
+}
+// 4. settled habit: started 8+ weeks ago and done on 85%+ of scheduled days in the last 8 weeks
+const SETTLE_DAYS=56;
+function isSettled(r){
+  const first=firstDone(r); if(!first || first>dkey(shift(logicalDate(),-SETTLE_DAYS))) return false;
+  let n=0,k=0; for(let i=1;i<=SETTLE_DAYS;i++){ const x=shift(logicalDate(),-i), key=dkey(x);
+    if(!r.days.includes(x.getDay())||skippedOn(r,key)) continue; n++; if(didOn(r,key)) k++; }
+  return n>=8 && k/n>=0.85;
+}
+// 3. small immediate reward on check
+function tick2(){ if(!ctx) return; const t=ctx.currentTime;
+  [[660,0],[990,.07]].forEach(([f,o])=>{ const os=ctx.createOscillator(), g=ctx.createGain();
+    os.type='sine'; os.frequency.value=f; g.gain.setValueAtTime(0,t+o); g.gain.linearRampToValueAtTime(.12,t+o+.01); g.gain.exponentialRampToValueAtTime(.0001,t+o+.22);
+    os.connect(g).connect(ctx.destination); os.start(t+o); os.stop(t+o+.25); }); }
+function complete(r){
+  const back=isComeback(r);
+  setDone(r.id,true);
+  if(S.feedback){ tick2(); if('vibrate' in navigator) navigator.vibrate(15); }
+  const c=document.querySelector(`.item[data-id="${r.id}"] .check`); if(c){ c.classList.add('pop'); }
+  toast(back?`'${r.title}' 다시 시작했어요`:`'${r.title}' 완료`,()=>setDone(r.id,false));
+}
 const daysLabel = d => same(d,ALL)?'매일':same(d,WEEK)?'평일':same(d,END)?'주말':d.map(i=>DAY[i]).join(' ');
 const until = m => { const diff=m-nowAdj(); if(diff<=0) return '지금'; const h=Math.floor(diff/60), mm=diff%60; return (h?`${h}시간 `:'')+(mm?`${mm}분 `:'')+'뒤'; };
 
@@ -350,7 +408,7 @@ function render(){
       <div class="now-main"><div class="now-text"><time>${next.time}</time><h2></h2></div>
       <button class="now-done" aria-label="${esc(next.title)} 완료">${CHECK.replace('width="20" height="20"','width="30" height="30"')}</button></div>`;
     now.querySelector('h2').textContent=next.title;
-    now.querySelector('.now-done').onclick=()=>{ setDone(next.id,true); toast(`'${next.title}' 완료`,()=>setDone(next.id,false)); };
+    now.querySelector('.now-done').onclick=()=>complete(next);
   }
 
   const G=[['출근 전',S.dayStart,540],['업무 중',540,1080],['퇴근 후',1080,1440+S.dayStart]];
@@ -364,19 +422,30 @@ function render(){
     const ul=sec.querySelector('ul');
     items.forEach(r=>{
       const dn=done.has(r.id), sk=skip.has(r.id), late=!dn&&!sk&&at(r)<nm&&r!==next;
-      const li=document.createElement('li'); li.className='item'+(dn?' done':'')+(sk?' skipped':'');
+      const li=document.createElement('li'); li.className='item'+(dn?' done':'')+(sk?' skipped':''); li.dataset.id=r.id;
+      const w=weekStats(r), settled=isSettled(r);
       const tag = sk?'<span class="tag skip">오늘 건너뜀</span>':late?'<span class="tag">지남</span>':'';
-      li.innerHTML=`<button class="open" aria-label="${esc(r.title)} 수정"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}${tag}</span></span></button>
+      li.innerHTML=`<button class="open" aria-label="${esc(r.title)} 수정"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}, <span class="week">이번 주 ${w.done}/${w.total}</span>${settled?'<span class="tag settled">자리 잡음</span>':''}${tag}</span></span></button>
         <button class="check" aria-pressed="${dn}" aria-label="${esc(r.title)} 완료">${CHECK}</button>`;
       li.querySelector('.t').textContent=r.title;
       li.querySelector('.open').onclick=()=>openSheet(r);
-      li.querySelector('.check').onclick=()=>{ const on=!dn; setDone(r.id,on); if(on) toast(`'${r.title}' 완료`,()=>setDone(r.id,false)); };
+      li.querySelector('.check').onclick=()=>{ if(dn) setDone(r.id,false); else complete(r); };
       ul.appendChild(li);
     });
     box.appendChild(sec);
   }
-  drawBanner();
+  drawBanner(); drawNudge();
 }
+
+/* ---------- settled-habit nudge ---------- */
+let nudgeFor=null;
+function drawNudge(){
+  const r=S.routines.find(x=>x.alarm && !x.settledAsked && isSettled(x));
+  nudgeFor=r||null; $('#nudge').hidden=!r;
+  if(r) $('#nudgeText').textContent=`'${r.title}' 루틴이 8주 동안 꾸준해서 자리를 잡았어요. 이제 알람 없이 해볼까요?`;
+}
+$('#nudgeOff').onclick=()=>{ const r=nudgeFor; if(!r) return; r.alarm=false; r.settledAsked=true; save(); render(); toast(`'${r.title}' 알람을 껐어요`,()=>{ r.alarm=true; save(); render(); }); };
+$('#nudgeKeep').onclick=()=>{ const r=nudgeFor; if(!r) return; r.settledAsked=true; save(); render(); toast('알람을 계속 울릴게요'); };
 
 /* ---------- add / edit sheet ---------- */
 let editing=null, fDays=new Set(ALL);
@@ -453,7 +522,8 @@ $('#allAdd').onclick=()=>openSheet();
 /* ---------- settings ---------- */
 const dsSel=$('#dayStart');
 [[0,'자정 (0시)'],[60,'새벽 1시'],[120,'새벽 2시'],[180,'새벽 3시'],[240,'새벽 4시'],[300,'새벽 5시'],[360,'새벽 6시']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; dsSel.appendChild(o); });
-$('#setBtn').onclick=()=>{ dsSel.value=S.dayStart; $('#setSheet').showModal(); };
+$('#setBtn').onclick=()=>{ dsSel.value=S.dayStart; $('#fbToggle').checked=S.feedback; $('#setSheet').showModal(); };
+$('#fbToggle').onchange=e=>{ S.feedback=e.target.checked; save(); if(S.feedback){ unlock(); tick2(); } };
 dsSel.onchange=()=>{ S.dayStart=+dsSel.value; S.fired={}; save(); render(); toast('하루 시작 시각을 바꿨어요'); };
 
 function download(name,text,type){
@@ -521,7 +591,7 @@ function ring(r){
   document.title=`⏰ ${r.title}`;
 }
 function stopRing(){ clearInterval(ringTimer); current=null; document.title='오늘의 루틴'; $('#alarm').open&&$('#alarm').close(); }
-$('#aDone').onclick=()=>{ const r=current; stopRing(); if(r){ setDone(r.id,true); toast(`'${r.title}' 완료`,()=>setDone(r.id,false)); } };
+$('#aDone').onclick=()=>{ const r=current; stopRing(); if(r) complete(r); };
 $('#aSnooze').onclick=()=>{ const r=current; stopRing(); if(r){ S.snooze.push({id:r.id,at:Date.now()+5*60e3}); save(); toast('5분 뒤에 다시 알려드릴게요'); } };
 $('#alarm').addEventListener('cancel',e=>{ e.preventDefault(); $('#aSnooze').click(); });
 
