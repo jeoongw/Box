@@ -26,7 +26,7 @@
   --ink:#1e2d5a; --muted:#5b6780; --line:#d5dbe5;
   --done:#b87500; --on-done:#ffffff; --done-text:#9c6200;
   --accent:#1e2d5a; --on-accent:#ffffff;
-  --lake:#2f6970;
+  --lake:#2f6970; --field:#7c879c;
   --shadow:0 10px 30px rgba(30,45,90,.10);
   --serif:"Gowun Batang",serif; --sans:"Noto Sans KR",system-ui,sans-serif;
   color-scheme:light;
@@ -36,7 +36,7 @@
   --ink:#e6eaf2; --muted:#a3adc2; --line:#2e3964;
   --done:#f5b335; --on-done:#141b33; --done-text:#f5b335;
   --accent:#e6eaf2; --on-accent:#141b33;
-  --lake:#7fc0c6;
+  --lake:#7fc0c6; --field:#6b77a0;
   --shadow:0 10px 30px rgba(0,0,0,.35);
   color-scheme:dark;
 }}
@@ -46,6 +46,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16p
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--lake);outline-offset:3px;border-radius:6px}
+.now :focus-visible{outline-color:currentColor}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .app{max-width:560px;margin:0 auto;padding:28px 20px calc(120px + env(safe-area-inset-bottom))}
@@ -115,7 +116,7 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
 .sheet h2{font-size:1.125rem;font-weight:500;margin:0 0 16px}
 .field{display:block;margin-bottom:16px}
 .field > span{display:block;font-size:.875rem;color:var(--muted);margin-bottom:6px}
-.field input[type=text],.field input[type=time]{width:100%;height:48px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 14px;font-size:1rem}
+.field input[type=text],.field input[type=time]{width:100%;height:48px;border:1px solid var(--field);background:var(--bg);border-radius:12px;padding:0 14px;font-size:1rem}
 .field input[type=time]{font-variant-numeric:tabular-nums}
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button,.days button{height:44px;border-radius:22px;border:1px solid var(--line);background:var(--bg);padding:0 16px;font-size:.9375rem}
@@ -124,8 +125,8 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
 .seg button[aria-pressed="true"],.days button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .days[hidden]{display:none}
 .switch{display:flex;align-items:center;justify-content:space-between;min-height:48px;margin-bottom:12px;cursor:pointer}
-.switch input{appearance:none;width:48px;height:28px;border-radius:14px;background:var(--line);position:relative;margin:0;cursor:pointer;transition:background .15s}
-.switch input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch input{appearance:none;width:48px;height:28px;border-radius:14px;background:var(--muted);position:relative;margin:0;cursor:pointer;transition:background .15s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--surface);transition:transform .15s}
 .switch input:checked{background:var(--lake)}
 .switch input:checked::after{transform:translateX(20px)}
 .actions{display:flex;gap:10px;margin-top:8px}
@@ -181,7 +182,7 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
 .set:first-of-type{border-top:0;padding-top:0}
 .set h3{font-size:1rem;font-weight:500;margin:0 0 4px}
 .set p{margin:0 0 10px;font-size:.875rem;color:var(--muted)}
-.set select{height:48px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:0 12px;font:inherit;color:var(--ink);min-width:160px}
+.set select{height:48px;border:1px solid var(--field);background:var(--bg);border-radius:12px;padding:0 12px;font:inherit;color:var(--ink);min-width:160px}
 .set .btn{flex:none;height:44px;font-size:.9375rem;padding:0 18px}
 .set .row{display:flex;gap:8px;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -203,7 +204,7 @@ dialog::backdrop{background:rgba(20,27,51,.5)}
     <button class="link" id="laterBtn">나중에</button>
   </div>
 
-  <section class="now" id="now" aria-live="polite"></section>
+  <section class="now" id="now"></section>
   <div class="nudge" id="nudge" role="status" hidden>
     <p id="nudgeText"></p>
     <div class="row">
@@ -387,13 +388,35 @@ function complete(r){
 const daysLabel = d => same(d,ALL)?'매일':same(d,WEEK)?'평일':same(d,END)?'주말':d.map(i=>DAY[i]).join(' ');
 const until = m => { const diff=m-nowAdj(); if(diff<=0) return '지금'; const h=Math.floor(diff/60), mm=diff%60; return (h?`${h}시간 `:'')+(mm?`${mm}분 `:'')+'뒤'; };
 
+/* ---------- keep keyboard focus across re-renders ---------- */
+function focusKey(el){
+  if(!el||el===document.body) return null;
+  if(el.closest('#now')) return {now:true, id:el.dataset.id};
+  const li=el.closest('.item'); if(li) return {id:li.dataset.id, cls:el.classList.contains('check')?'check':'open'};
+  return el.id?{el:el.id}:null;
+}
+function focusByKey(k){
+  if(!k) return false;
+  let t=null;
+  if(k.el) t=document.getElementById(k.el);
+  else if(k.now) t=$('#now .now-done')||document.querySelector(`.item[data-id="${k.id}"] .check`);
+  else t=document.querySelector(`.item[data-id="${k.id}"] .${k.cls}`);
+  if(t&&!t.hidden&&t.offsetParent!==null){ t.focus({preventScroll:true}); return true; }
+  return false;
+}
+
 /* ---------- render ---------- */
 function render(){
+  const fk=focusKey(document.activeElement), inMain=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#now,#groups');
+  draw();
+  if(inMain && !document.activeElement.closest('#now,#groups')) focusByKey(fk);
+}
+function draw(){
   const d=logicalDate(), list=todays(), done=doneSet(), skip=skipSet(), nm=nowAdj();
   const active=list.filter(r=>!skip.has(r.id));
   const n=active.filter(r=>done.has(r.id)).length, pct=active.length?Math.round(n/active.length*100):0;
   $('#date').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${DAY[d.getDay()]}요일`;
-  $('#count').innerHTML=active.length?`<b>${n}</b> / ${active.length} 완료`:'';
+  const cnt=active.length?`<b>${n}</b> / ${active.length} 완료`:''; if($('#count').innerHTML!==cnt) $('#count').innerHTML=cnt;
   $('#bar').firstElementChild.style.width=pct+'%'; $('#bar').setAttribute('aria-valuenow',pct);
   if('setAppBadge' in navigator){ const left=active.length-n; (left?navigator.setAppBadge(left):navigator.clearAppBadge()).catch(()=>{}); }
 
@@ -406,7 +429,7 @@ function render(){
     now.className='now';
     now.innerHTML=`<p class="now-label">${late?'지난 할 일':'다음 할 일, '+until(at(next))}</p>
       <div class="now-main"><div class="now-text"><time>${next.time}</time><h2></h2></div>
-      <button class="now-done" aria-label="${esc(next.title)} 완료">${CHECK.replace('width="20" height="20"','width="30" height="30"')}</button></div>`;
+      <button class="now-done" data-id="${next.id}" aria-label="${esc(next.title)} 완료">${CHECK.replace('width="20" height="20"','width="30" height="30"')}</button></div>`;
     now.querySelector('h2').textContent=next.title;
     now.querySelector('.now-done').onclick=()=>complete(next);
   }
@@ -424,8 +447,8 @@ function render(){
       const dn=done.has(r.id), sk=skip.has(r.id), late=!dn&&!sk&&at(r)<nm&&r!==next;
       const li=document.createElement('li'); li.className='item'+(dn?' done':'')+(sk?' skipped':''); li.dataset.id=r.id;
       const w=weekStats(r), settled=isSettled(r);
-      const tag = sk?'<span class="tag skip">오늘 건너뜀</span>':late?'<span class="tag">지남</span>':'';
-      li.innerHTML=`<button class="open" aria-label="${esc(r.title)} 수정"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}, <span class="week">이번 주 ${w.done}/${w.total}</span>${settled?'<span class="tag settled">자리 잡음</span>':''}${tag}</span></span></button>
+      const tag = sk?'<span class="tag skip"><span class="sr">, </span>오늘 건너뜀</span>':late?'<span class="tag"><span class="sr">, </span>지남</span>':'';
+      li.innerHTML=`<button class="open"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}, <span class="week">이번 주 ${w.done}/${w.total}</span>${settled?'<span class="tag settled"><span class="sr">, </span>자리 잡음</span>':''}${tag}</span></span><span class="sr">, 수정</span></button>
         <button class="check" aria-pressed="${dn}" aria-label="${esc(r.title)} 완료">${CHECK}</button>`;
       li.querySelector('.t').textContent=r.title;
       li.querySelector('.open').onclick=()=>openSheet(r);
@@ -510,7 +533,7 @@ function drawAll(){
   if(!list.length){ ul.innerHTML='<li class="empty">아직 루틴이 없어요.</li>'; return; }
   list.forEach(r=>{
     const li=document.createElement('li');
-    li.innerHTML=`<button class="open" aria-label="${esc(r.title)} 수정"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}</span></span></button>`;
+    li.innerHTML=`<button class="open"><time>${r.time}</time><span><span class="t"></span><span class="m">${daysLabel(r.days)}${r.alarm?'':', 알람 끔'}</span></span><span class="sr">, 수정</span></button>`;
     li.querySelector('.t').textContent=r.title;
     li.querySelector('.open').onclick=()=>openSheet(r);
     ul.appendChild(li);
@@ -595,7 +618,7 @@ $('#aDone').onclick=()=>{ const r=current; stopRing(); if(r) complete(r); };
 $('#aSnooze').onclick=()=>{ const r=current; stopRing(); if(r){ S.snooze.push({id:r.id,at:Date.now()+5*60e3}); save(); toast('5분 뒤에 다시 알려드릴게요'); } };
 $('#alarm').addEventListener('cancel',e=>{ e.preventDefault(); $('#aSnooze').click(); });
 
-let lastDay=today();
+let lastDay=today(), lastSig='';
 function tick(){
   const k=today(), nm=nowAdj();
   if(k!==lastDay){ lastDay=k; S.fired={}; save(); }
@@ -608,17 +631,29 @@ function tick(){
       if(r.alarm && !isDone(r.id) && !skip.has(r.id) && !S.fired[k+r.id] && nm>=m && nm-m<=2){ S.fired[k+r.id]=1; save(); ring(r); break; }
     }
   }
-  if(!document.querySelector('dialog.sheet[open]')) render();
+  const sig=k+nm; if(sig!==lastSig && !document.querySelector('dialog.sheet[open]')){ lastSig=sig; render(); }
 }
 
 /* ---------- toast with undo ---------- */
-let toastT;
+let toastT, toastMs=0, toastBack=null;
+const T=$('#toast');
+function hideToast(){
+  clearTimeout(toastT);
+  const had=T.contains(document.activeElement);
+  T.classList.remove('show'); $('#toastUndo').hidden=true;
+  if(had && !focusByKey(toastBack)) $('#addBtn').focus();
+}
+const armToast=()=>{ clearTimeout(toastT); toastT=setTimeout(hideToast,toastMs); };
 function toast(msg,undo){
   $('#toastMsg').textContent=msg;
-  const u=$('#toastUndo'); u.hidden=!undo; u.onclick=()=>{ undo&&undo(); $('#toast').classList.remove('show'); };
-  $('#toast').classList.add('show'); clearTimeout(toastT);
-  toastT=setTimeout(()=>$('#toast').classList.remove('show'), undo?5000:2800);
+  const u=$('#toastUndo'); u.hidden=!undo; u.onclick=()=>{ undo&&undo(); hideToast(); };
+  T.classList.add('show'); toastMs=undo?6000:2800; armToast();
 }
+// keep the toast up while the pointer or keyboard focus is on it
+T.addEventListener('focusin',e=>{ if(!T.contains(e.relatedTarget)) toastBack=focusKey(e.relatedTarget); clearTimeout(toastT); });
+T.addEventListener('focusout',e=>{ if(!T.contains(e.relatedTarget)) armToast(); });
+T.addEventListener('pointerenter',()=>clearTimeout(toastT));
+T.addEventListener('pointerleave',()=>{ if(!T.contains(document.activeElement)) armToast(); });
 
 render(); setInterval(tick,10000); setTimeout(tick,500);
 </script>
